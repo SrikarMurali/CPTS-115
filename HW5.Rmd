@@ -1,0 +1,158 @@
+---
+title: "HW#5"
+author: "Srikar Murali"
+date: "October 23, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r begin, include=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(MASS)
+
+wbh.eda <- read.csv("C:/Users/srika/Documents/R/cpts115/Homework/wbh-dat4.csv", stringsAsFactors = FALSE)
+
+
+```
+
+## Part 1
+
+#### Gross National Income
+
+```{r gross.nat.incom}
+lm.1 <- lm(fertility ~ gross.nat.income, data = wbh.eda)
+summary(lm.1)
+par(mfrow = c(2,2))
+plot(lm.1)
+
+```
+
+R-squared is around 0.2153, so not too good since it only explains 21.54 % of the variation. Intercept is positive , which is good since it does
+not make sense to have negative fertility. The slope is negative which means as the gross national income increases the fertility decreases. This makes sense from the given data as richer countries usually have a lower fertility rate.The residuls are not evenly balanced over the line. The residuals do not have a straight line, but rather a negative sloping line. The data does not fit the normal line that well either. Thus, I would not use a linear model for this data, though a higher order model might be better.
+
+#### Primary Enrollment
+
+```{r primary.enroll}
+lm.2 <- lm(fertility ~ primary.enroll, data = wbh.eda)
+summary(lm.2)
+par(mfrow = c(2,2))
+plot(lm.2)
+```
+
+The coefficient for the slope is negative which means the fertility decreases by a bit as primary enrollment increases. The p-value for primary
+enrollment is greater than 0.05 which means that it does not offer that much additional unique predictive power. As such the R-squared value is very low at 0.007. Thus, I would not use this variable as a predictor.The residuals are not balanced or evenly distributed. The residuals do not form anything remotely close to a straight line, and the scale-location graph has the residuals scattered about. The data does not fit the normal line at all. A higher order model might be necessary for this data, though it is not of too much concern since primary enrollment offers little unique predictive power for fertility.
+
+
+#### Health Expenditure
+
+```{r health.expend}
+lm.3 <- lm(fertility ~ health.expend, data = wbh.eda)
+summary(lm.3)
+
+par(mfrow = c(2,2))
+plot(lm.3)
+```
+
+The R-squared value is 0.1721. Thus health expenditure is an alright predictor of fertility. The slope is negative and the intercept is positive,
+this means that the fertility decreases as the health expenditure increases. However it does not decrease by much.The residuals are not evenly distributed over the line, and the line is not straight. The points are not balanced, and the residuals are not normally distributed. The points are very bunched up. This data would be better with a higher level model, though it still does offer some unique predictive power.
+
+
+#### Mortality
+
+```{r Mortality}
+lm.4 <- lm(fertility ~ mortality, data = wbh.eda)
+summary(lm.4)
+par(mfrow = c(2,2))
+plot(lm.4)
+
+```
+
+The coefficients are both positive, with the slope being rather high when compared to the last few predictors. With an increase in mortality, 
+there is a rather substantial increase in fertility. The R-squared value is also very high at 0.7383, which means it explains a large part of the variation in the data. This makes sense as fertility and mortality are almost opposite sides of the same coin, and thus are related. The residual plot is rather balanced. The line seems to have equal number of points on both sides. The data seems to fit the normal line reasonably well, especially relative to the other variables. The scale-location and leverage plots are rather balanced with no high leverage points, though there is still some curvature in the scale location and residual plot.
+
+#### Life Expectancy
+
+```{r Life Expectancy}
+lm.5 <- lm(fertility ~ life.expect, data = wbh.eda)
+summary(lm.5)
+par(mfrow = c(2,2))
+plot(lm.5)
+
+```
+
+The intercept is positive while the slope is negative. This means as life expectancy increases, fertility decreases. This makes sense since if 
+people live longer, there are less people of child bearing age. The R-squared value is also rather high at 0.7062 which means that life expectancy explains a good amount of the variation in fertility.The residual plot is fairly balanced, though there is still some curvature. The data fits the normal line very well when compared to the other predictors. There are no high leverage points, and the scale-location graph is relatively balanced, though there is still some curvature at the beginning. Overall this is a very good predictor of fertility.
+
+
+#### Region
+
+```{r Region}
+lm.6 <- lm(fertility ~ region, data = wbh.eda)
+summary(lm.6)
+par(mfrow = c(2,2))
+plot(lm.6)
+
+```
+
+Since this variable is a factor, it has multiple coefficients. They seem to be postive or negative depending on the region. This makes sense
+as poorer countries will probably have a higher fertility rate as birth control and life expectancy are lower there, while in richer countries
+the slope will most likely be negative. The R-squared value is pretty high at 0.6356, which means region explains a good amount of variation
+in fertility.The residuals seem to be evenly balanced, though there is slight curvature. There does not seem to be any high leverage points, and the data fits the normal line moderately well. The scale-location graph has curvature, though it does not seem to be too bad. Overall this variable fits the data pretty well, even though a higher order model would probably work even better.
+
+
+
+## Part 2
+
+```{r p2}
+predictors <- c('mortality', 'life.expect', 'region')
+response <- c('fertility')
+wbh.eda.no.na <- na.omit(wbh.eda[c(predictors, response)])
+colSums(is.na(wbh.eda.no.na))
+tru.lm <- lm(fertility ~ mortality + life.expect + region, data = wbh.eda.no.na)
+summary(tru.lm)
+tru.lm <- step(tru.lm)
+
+tru.lm.revised <- lm(fertility ~ region + mortality , wbh.eda) #0.7941
+summary(tru.lm.revised)
+
+```
+
+The coefficients for the model are positive for mortality, but either negative or positive for the region. This makes sense as the fertility
+depends on the state of the region. For example, poorer regions will probably have a higher fertility rate than richer regions. The positive
+slope for mortality makes sense too as if more people are dying, then there must be a higher fertility rate to even it out. The R-squared is the highest observed at 0.7941, which is higher than the three variable model. This is good since it uses less variables, and thus is less prone to overfitting. The best model for predicting fertility is by using the region and mortality variables, as these give the highest R-squared value, and only use two predictors.
+
+
+## Part 3
+
+```{r Part 3}
+
+new.wbh.eda <- wbh.eda[is.na(wbh.eda$fertility),]
+new.wbh.eda <- cbind(new.wbh.eda,fertility.pred=predict(tru.lm.revised, new.wbh.eda))
+new.wbh.eda
+wbh.eda[56, 10] <- new.wbh.eda[3, 11]
+wbh.eda[118, 10] <- new.wbh.eda[6, 11]
+wbh.eda[142, 10] <- new.wbh.eda[7, 11]
+wbh.eda[148, 10] <- new.wbh.eda[8, 11]
+wbh.eda[172, 10] <- new.wbh.eda[10, 11]
+wbh.eda[181, 10] <- new.wbh.eda[11, 11]
+wbh.eda[205, 10] <- new.wbh.eda[12, 11]
+wbh.eda[238, 10] <- new.wbh.eda[15, 11]
+
+
+```
+
+
+## Part 4
+
+Based on my analysis I would say that mortality rate and region impact the fertility rate the most. Though life expectancy does impact the 
+fertility rate, it does not offer that much predictive power after adding region and mortality. This is probably because mortality gives much
+of the same information that life expectancy does, which means that life expectancy does not offer too much unique predictive power. Region
+offers the most predictive power, which is most likely due to the level of factors it has which gives it a good amount of predictive power. Though by itself it does not have as much predictive power as mortality and life expectancy. The combination of region and mortality offers greater predictive power than the individuals and only uses two variables. Mortality on its own offers a good amount of predictive power, though the additional variable in my opinion is worth the extra predictive power; though it probably depends on what the purpose of the model is.

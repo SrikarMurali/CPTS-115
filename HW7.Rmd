@@ -1,0 +1,107 @@
+---
+title: "Homework#7"
+author: "Srikar Murali"
+date: "November 28, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(MASS)
+library(stringr)
+library(tree)
+library(randomForest)
+library(cluster)
+library(HSAUR)
+library(GGally)
+set.seed(31459)
+```
+
+## 1.
+
+#### a.
+
+```{r p1a}
+wbh.2010 <- read.csv('C:/Users/srika/Documents/R/cpts115/HW7/wbh2010-noNA.csv')
+
+
+wbh.pca <- prcomp(wbh.2010[, c(-1, -2)], center = TRUE, scale. = TRUE)
+screeplot(wbh.pca)
+summary(wbh.pca)
+
+```
+
+#### b.
+
+To account for 90% of the variation you will need 15 principal components. To account for 95% of the variation you will need 21 principal components.
+
+
+#### c.
+
+PCA is semi-useful for the World Bank Country Health dataset. To get 90%-95% of the variation you will need a large number of principal components, around 15-21. However, the dataset contains a large number of variables in general, and 15-21, depending on the situation is a rather small number compared to the total number of variables. However, if you wanted to use few principal components to explain the data, then PCA will not be as useful. In my opinion, it is rather useful overall, since it greatly reduces the number of variables.
+
+## 2.
+
+
+#### a.
+
+```{r p2a}
+round(wbh.pca$rotation[, 1:10], 2)
+
+```
+
+
+#### b.
+
+```{r p2b}
+biplot(wbh.pca, col=c('grey','darkblue'), cex = rep(.5, 5))
+
+```
+
+#### c.
+
+The variables are rather scattered when looking at the first two principal components. However there are some groups, as variables of similar type are close to each other, like the population variables. By looking at the biplot several inferences can be made about the data. For one, the first and second component are composed of pieces from many of the variables. In addition there does not seem to be any one variable having too much influence. Though there are many vectors, there seems to be three or four main groups of vectors which carry the most influence and cover many of the points. The variation in the points seem to be mainly explained by principal component one. There seems to be several natural breaks in the dataset.
+
+
+## 3.
+
+
+#### a.
+
+```{r p3a}
+
+wbh.km3 <- kmeans(wbh.pca$x, 3)
+dissE3 <- daisy(wbh.pca$x)^2
+summary(dissE3)
+str(dissE3)
+str(wbh.km3)
+summary(wbh.km3)
+```
+
+
+#### b.
+
+```{r p3b}
+
+wbh.sk3 <- silhouette(wbh.km3$cluster, dissE3)
+plot(wbh.sk3, col='darkblue', main='wbh.dat with 3 clusters')
+
+```
+
+The average silhouette width is 0.44 which is decent. Each cluster has a relatively decent width, though the second cluster has a much larger width compared to the other two. The third cluster seems to have been forcibly added, as it is rather small. The second cluster is very large, which means that it has the most points close to each other in the cluster and far from the other clusters. It might be better to run the K-means clustering with two clusters.
+
+
+#### c.
+
+```{r p3c}
+ggpairs(data.frame(cluster = as.factor(wbh.km3$cluster), wbh.pca$x),
+        columns = c(2:4),
+        title='World Health Bank',
+        ggplot2::aes(color=cluster))
+```
+
+There seems to be some seperation based on the principal components. However the seperation is not too clear in some areas. Using the first component and second component seems to split the data rather distinctly, though the second and third groups are still pretty close. The first and third components together clearly seperate the data into three clusters, while using the second and third component makes it hard to see any of the clusters. This shows that the first component explains most of the variation. 

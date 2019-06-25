@@ -1,0 +1,65 @@
+---
+title: "HW#4"
+author: "Srikar Murali"
+date: "October 16, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Begin, warning=FALSE,message=FALSE,include=FALSE,echo=FALSE}
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(GGally)
+library(hexbin)
+library(Rmisc)
+#hwk2 Code
+wbh.cntry <- read.csv("C:/Users/srika/Documents/R/cpts115/HW3Folder/WorldBankCountryClassClean.csv", stringsAsFactors = F)
+wbh.cntry$country.code <- as.factor(wbh.cntry$country.code)
+wbh.cntry$region <- as.factor(wbh.cntry$region)
+wbh.cntry$income.group <- as.factor(wbh.cntry$income.group)
+wbh.cntry$lend.cat <- as.factor(wbh.cntry$lend.cat)
+wbh.cntry <- select(wbh.cntry,c(2,1,3,4,5))
+wbh.ind <- read.csv("C:/Users/srika/Documents/R/cpts115/HW3Folder/WorldBankHealth-VarDescClean.csv", stringsAsFactors = F)
+# rename columns
+colnames(wbh.ind) <- c("indicator.code", "indicator.name", "long.definition")
+# convert code to factor
+wbh.ind$indicator.code <- as.factor(wbh.ind$indicator.code)
+wbh.dat <- read.csv("C:/Users/srika/Documents/R/cpts115/HW3Folder/worldbankhealth.csv", stringsAsFactors = F)
+colnames(wbh.dat)[1:4] <- c("country.name", "country.code","indicator.name","indicator.code")
+wbh.dat$country.code <- as.factor(wbh.dat$country.code)
+wbh.dat <- select(wbh.dat, country.code,year,indicator.code,value)
+wbh.dat <- spread(wbh.dat, key=indicator.code, value=value)
+
+#hwk3 Code
+ind.code1 <- colnames(wbh.dat[,-c(1:2)])  
+ind.code2 <- wbh.ind[,1]
+wbh.ind.match <- data.frame(ind.code1,ind.code2,ind.code1==ind.code2)
+kill.columns <- c(seq(from=188, to=272, by=2), seq(274,375))+2 
+kill.columns
+wbh.dat2<- wbh.dat[,-kill.columns]
+wbh.dat2.NA <- !is.na(wbh.dat2)
+wbh.dat2.NA2<- data.frame(country.code=wbh.dat2[,1], wbh.dat2.NA[,-c(1:2)])
+wbh.dat2.cntry<- aggregate.data.frame(wbh.dat2.NA2[,-1], by=list(country.code=wbh.dat2.NA2$country.code), FUN=sum)
+wbh.dat2.cntry.0<-apply(as.matrix(wbh.dat2.cntry[,-1]==0),sum,MARGIN=2) # remove 1st column
+cutoff <- 40
+wbh.dat3 <- wbh.dat2[,c(T,T,(wbh.dat2.cntry.0<cutoff))]
+wbh.dat3.var <- inner_join(data.frame(indicator.code=colnames(wbh.dat3)), wbh.ind, by="indicator.code")
+wbh.dat4 <- full_join(wbh.dat3, wbh.cntry[,-2], by="country.code") # remove country name
+wbh.dat4 <- select(wbh.dat4, c(1,2,108:110,3:107))
+wbh.dat4$country.code <- as.factor(wbh.dat4$country.code)
+rm(wbh.dat2, wbh.dat3,wbh.cnt.na,wbh.dat.NA,wbh.dat.NA2,wbh.dat2.NA2,ind.code1,ind.code2,wbh.ind.match,wbh.dat2.cntry,wbh.dat2.cntry.0)
+write.csv(file = 'wbh-dat4.csv', x = wbh.dat4)
+
+wbh.eda <- filter(wbh.dat4,year==2010)
+wbh.eda <- select(wbh.eda,c(1,3,4),NY.GNP.PCAP.CD,SE.PRM.ENRR,SH.XPD.PCAP,
+                  SP.DYN.IMRT.IN,SP.DYN.LE00.IN,SP.DYN.TFRT.IN)
+colnames(wbh.eda)<-c("country.code","region","income.group",
+                     "gross.nat.income", "primary.enroll", "health.expend", "mortality",
+                     "life.expect", "fertility")
+
+```

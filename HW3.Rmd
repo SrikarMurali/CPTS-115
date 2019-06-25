@@ -1,0 +1,238 @@
+---
+title: "CPTS115HW3"
+author: "Srikar Murali (#11593114)"
+date: "October 10, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r Setup, echo=FALSE, include=FALSE}
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(GGally)
+library(hexbin)
+#hwk2 Code
+wbh.cntry <- read.csv("WorldBankCountryClassClean.csv", stringsAsFactors = F)
+wbh.cntry$country.code <- as.factor(wbh.cntry$country.code)
+wbh.cntry$region <- as.factor(wbh.cntry$region)
+wbh.cntry$income.group <- as.factor(wbh.cntry$income.group)
+wbh.cntry$lend.cat <- as.factor(wbh.cntry$lend.cat)
+wbh.cntry <- select(wbh.cntry,c(2,1,3,4,5))
+wbh.ind <- read.csv("WorldBankHealth-VarDescClean.csv", stringsAsFactors = F)
+# rename columns
+colnames(wbh.ind) <- c("indicator.code", "indicator.name", "long.definition")
+# convert code to factor
+wbh.ind$indicator.code <- as.factor(wbh.ind$indicator.code)
+wbh.dat <- read.csv("worldbankhealth.csv", stringsAsFactors = F)
+colnames(wbh.dat)[1:4] <- c("country.name", "country.code","indicator.name","indicator.code")
+wbh.dat$country.code <- as.factor(wbh.dat$country.code)
+wbh.dat <- select(wbh.dat, country.code,year,indicator.code,value)
+wbh.dat <- spread(wbh.dat, key=indicator.code, value=value)
+
+#hwk3 Code
+ind.code1 <- colnames(wbh.dat[,-c(1:2)])  
+ind.code2 <- wbh.ind[,1]
+wbh.ind.match <- data.frame(ind.code1,ind.code2,ind.code1==ind.code2)
+kill.columns <- c(seq(from=188, to=272, by=2), seq(274,375))+2 
+kill.columns
+wbh.dat2<- wbh.dat[,-kill.columns]
+wbh.dat2.NA <- !is.na(wbh.dat2)
+wbh.dat2.NA2<- data.frame(country.code=wbh.dat2[,1], wbh.dat2.NA[,-c(1:2)])
+wbh.dat2.cntry<- aggregate.data.frame(wbh.dat2.NA2[,-1], by=list(country.code=wbh.dat2.NA2$country.code), FUN=sum)
+wbh.dat2.cntry.0<-apply(as.matrix(wbh.dat2.cntry[,-1]==0),sum,MARGIN=2) # remove 1st column
+cutoff <- 40
+wbh.dat3 <- wbh.dat2[,c(T,T,(wbh.dat2.cntry.0<cutoff))]
+wbh.dat3.var <- inner_join(data.frame(indicator.code=colnames(wbh.dat3)), wbh.ind, by="indicator.code")
+wbh.dat4 <- full_join(wbh.dat3, wbh.cntry[,-2], by="country.code") # remove country name
+wbh.dat4 <- select(wbh.dat4, c(1,2,108:110,3:107))
+wbh.dat4$country.code <- as.factor(wbh.dat4$country.code)
+rm(wbh.dat2, wbh.dat3,wbh.cnt.na,wbh.dat.NA,wbh.dat.NA2,wbh.dat2.NA2,ind.code1,ind.code2,wbh.ind.match,wbh.dat2.cntry,wbh.dat2.cntry.0)
+
+```
+
+## Part 1
+
+The data has been cleaned in that the variables which were extraneous were removed. In addition the rows which had many NA's and did not contribute to helping understand the data were removed. Additional variables which will be useful for data analysis were added such as country code. Overall the data set seems to be tidy and ready for analysis.
+
+## Part 2
+```{r Part 2, warning=FALSE}
+
+wbh.eda <- filter(wbh.dat4, year=='2010')
+
+wbh.eda <- select(wbh.eda, country.code, region, income.group, NY.GNP.PCAP.CD,
+         SE.PRM.ENRR, SH.XPD.PCAP, SP.DYN.IMRT.IN,SP.DYN.LE00.IN, SP.DYN.TFRT.IN)
+colnames(wbh.eda) <- c('country.code', 'region', 'income.group', 'gross.nat.income', 'primary.enroll', 'health.expend', 'mortality', 'life.expect', 'fertility.rate')
+View(wbh.eda)
+```
+
+## Part 3
+
+
+```{r Part 3, warning=FALSE}
+summary(wbh.eda)
+g1 <- ggplot(wbh.eda, aes(x=fertility.rate)) +
+  geom_histogram(binwidth = 1, aes(y=..density..), color = 'blue', fill = 'brown') +
+  labs(title = 'Fertility Rate Density')
+g1
+
+g2 <- ggplot(wbh.eda, aes(x=gross.nat.income)) +
+  geom_histogram(binwidth = 5000, aes(y=..density..), color = 'blue', fill = 'brown') +
+  labs(title = 'Gross National Income Density')
+g2
+
+g3 <- ggplot(wbh.eda, aes(x=life.expect)) +
+  geom_histogram(binwidth = 5, aes(y=..density..), color = 'blue', fill = 'brown') +
+  labs(title = 'Life Expectancy Density')
+g3
+
+g4 <- ggplot(wbh.eda, aes(x = region, y = fertility.rate)) +
+  geom_bar(stat = 'identity', fill = 'purple') +
+  labs(title = 'Fertility Rate vs Region')
+g4
+
+g5 <- ggplot(wbh.eda, aes(x = income.group, y = fertility.rate)) +
+  geom_bar(stat = 'identity', fill = 'darkgreen') +
+  labs(title = 'Fertility Rate vs Income Group')
+g5
+
+g55 <- ggplot(wbh.eda, aes(x = fertility.rate, fill = income.group)) +
+  geom_histogram(binwidth = 5) +
+  facet_wrap(~income.group, ncol=1) +
+  labs(title = 'Fertility Rate by Income Group')
+g55
+
+g56 <- ggplot(wbh.eda, aes(x = fertility.rate, color = region)) +
+  geom_freqpoly(binwidth = 2) +
+  labs(title = 'Fertility Rate by Region Frequency')
+g56
+
+g57 <- ggplot(wbh.eda, aes(x = fertility.rate, color = income.group)) +
+  geom_freqpoly(binwidth = 2) +
+  labs(title = 'Fertility Rate by Income Group Frequency')
+g57
+```
+
+g1: A fertility rate of two seems to be the most common, the overall distribution seems to be right skewed.
+
+g2: Distribution is extremely right skewed, and the majority of income is around 10000-15000. Majority is less than 30000.
+
+g3: Distribution is sort of left skewed with a peak at around 75. The majority of people seem to live around 70-80 years of age.
+
+g4: Sub-Saharan Africa has the highest fertility rate by far, with most of the other countries being around equal. Though North America has the lowest fertility rate by far. This could be due to social and cultural norms as well as overall income per family in the United States and Canada.
+
+g5: Lower-middle class people have the highest fertility rate, though low income is still pretty high. On average the higher income groups seem to have a lower fertility rate than the lower income groups.
+
+g55: Higher income groups seem to have on average lower fertility than low income groups.
+
+g56: Most regions seem to have the same ballpark fertility rate with differing counts. With the exception being that Sub-Saharan Africa has a much higher fertility rate.
+
+g57: The high and upper middle class income groups have very similar fertility rates while the lower income classes have a much greater fertility rate.
+
+## Part 4
+
+```{r Part 4, warning=FALSE}
+g6 <- ggplot(wbh.eda, aes(x = region, y = fertility.rate)) +
+  geom_boxplot(color = 'blue', fill = 'orange') +
+  labs(title = 'Fertility Rate vs Region')
+g6
+
+g7 <- ggplot(wbh.eda, aes(x = region, y = gross.nat.income)) +
+  geom_boxplot(color = 'red', fill = 'green') +
+  labs(title = 'Gross National Income vs Region')
+
+g7
+
+g8 <- ggplot(wbh.eda, aes(x = region, y = primary.enroll)) +
+  geom_boxplot(color = 'violet', fill = 'yellow') +
+  labs(title = 'Primary Enrollment vs Region')
+g8
+
+g9 <- ggplot(wbh.eda, aes(x = region, y = mortality)) +
+  geom_boxplot(color = 'blue4', fill = 'yellow3') +
+  labs(title = 'Mortality vs Region')
+g9
+
+g10 <- ggplot(wbh.eda, aes(x = income.group, y = fertility.rate)) +
+  geom_boxplot(color = 'blue', fill = 'orange') +
+  labs(title = 'Fertility Rate vs Income Group')
+g10
+
+g11 <- ggplot(wbh.eda, aes(x = income.group, y = gross.nat.income)) +
+  geom_boxplot(color = 'red', fill = 'green') +
+  labs(title = 'Gross National Income vs Income Group')
+g11
+
+g12 <- ggplot(wbh.eda, aes(x = income.group, y = primary.enroll)) +
+  geom_boxplot(color = 'violet', fill = 'yellow') +
+  labs(title = 'Primary Enrollment vs Income Group')
+g12
+
+g13 <- ggplot(wbh.eda, aes(x = income.group, y = mortality)) +
+  geom_boxplot(color = 'blue4', fill = 'yellow3') +
+  labs(title = 'Mortality vs Income Group')
+g13
+
+```
+
+g6: Most countries have approximately equal means, though Sub-Saharan Africa is the highest overall with the most outliers.
+
+g7: Europe has a very large range, while North America has the greatest income by a landslide. Canada and the United States are two of the wealthies countries so this distribution makes sense.
+
+g8: The various countries seem to have a very similar median, though Sub-Saharan Africa still has the widest range. The cause of this is most likely due to the very diverse backgrounds of people in Sub-Saharan Africa. Also Sub-Saharan Africa has no outliers in the data set.
+
+g9: First world countries tend to have a lower mortality rate than non-first world countries, third world countries have some of the largest ranges. Europe has many outliers, which could be due to the vast differences in quality of life in various countries in Europe.
+
+g10: Lower income groups tend to have a greater fertility rates than high income. 
+
+g11: High income groups have higher gross income.
+
+g12: Lower income groups have a very wide range for enrollment, though the median for all of the groups is similar. If data regarding secondary enrollment was taken, it would probably look much different, since most people who drop out tend to drop out in their middle school to high school years.
+
+g13: Lower income groups have a higher mortality than high income groups. This is probably due to the quality of life of low income group people vs high income group people.
+
+## Part 5
+
+```{r Part 5, warning=FALSE, message=FALSE}
+pair1 <- pairs(wbh.eda)
+
+
+pair2 <- pairs(wbh.eda[, 4:9])
+
+
+p1 <- ggpairs(wbh.eda, cardinality_threshold = 300, title = 'Pairs Plot')
+p1
+
+p2 <- ggpairs(wbh.eda, 
+        columns = c(4,5,6,7,8,9),
+        ggplot2::aes(color = region),
+        title = 'Pairs Plot only Numerical Data')
+p2
+
+p3 <- ggpairs(wbh.eda, 
+        columns = c(3, 9),
+        ggplot2::aes(color = income.group),
+        title = 'Fertility Rate vs Income Group')
+p3
+
+p4 <- ggplot(wbh.eda, aes(x = fertility.rate, y = gross.nat.income)) +
+  geom_hex() +
+  geom_smooth(method = loess, color = 'orange') +
+  labs(title = 'Gross National Income vs Fertility Rate')
+p4
+
+```
+
+pair1 and pair2: There seems to be a relationship between income and gross income, mortality and income, region and mortality, fertility rate and income, and primary enrollement and income. Mortality and income seem to have significant correlation, though most variables have some correlation with income. There seems to be strong correlation between income and fertility rate and income and mortality especially.
+
+p1 and p2: The strongest correlation seem to be between health expenditure and gross income. In addition mortality and fertility rate have a very high correlation, along with fertility and life expectancy. This is to be expected as these three are related to each other. Fertility and life expectancy are negatively correlated, while mortality and fertility rate are positively correlated. Primary education seems to have little correlation with most variables,
+
+p3: The fertility rate for lower income groups seems to be larger than the higher income groups.
+
+p4: There seems to be a negative correlation between fertility and gross national income, with gross national income hitting zero even as fertility increases. This seems to indicate that after a certain point, regardless of gross national income, fertility rate stays the same.
